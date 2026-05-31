@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/brands  — list
 export async function GET() {
   const { data, error } = await db.from("brands").select("*").order("created_at");
