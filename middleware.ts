@@ -1,25 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * App-wide login gate (HTTP Basic Auth).
- * Single-operator internal tool — no account system needed.
+ * Login gate (HTTP Basic Auth) for the internal factory tool.
+ * Single-operator — no account system needed.
  *
- * Credentials come from env:
- *   FACTORY_USER, FACTORY_PASS
- * If either is unset, the gate is OPEN (so first deploy isn't locked out);
- * set both in Coolify to turn protection on.
+ * PUBLIC (no auth): the marketing landing page "/" and /api/cron
+ * (cron carries its own CRON_SECRET). Everything else requires login.
  *
- * /api/cron is exempt — it carries its own CRON_SECRET and is called by
- * the scheduler, not a browser.
+ * Credentials: FACTORY_USER / FACTORY_PASS (Coolify env). If either is
+ * unset the gate is OPEN, so a first deploy can't lock itself out.
  */
 export const config = {
-  // run on everything except Next internals & static assets
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 
+const PUBLIC_PATHS = ["/"]; // the landing page is public
+
 export function middleware(req: NextRequest) {
-  // cron has its own auth
-  if (req.nextUrl.pathname.startsWith("/api/cron")) return NextResponse.next();
+  const { pathname } = req.nextUrl;
+
+  // public routes
+  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
+  if (pathname.startsWith("/api/cron")) return NextResponse.next();
 
   const USER = process.env.FACTORY_USER;
   const PASS = process.env.FACTORY_PASS;
@@ -30,9 +32,9 @@ export function middleware(req: NextRequest) {
     try {
       const decoded = atob(header.slice(6));
       const idx = decoded.indexOf(":");
-      const u = decoded.slice(0, idx);
-      const p = decoded.slice(idx + 1);
-      if (u === USER && p === PASS) return NextResponse.next();
+      if (decoded.slice(0, idx) === USER && decoded.slice(idx + 1) === PASS) {
+        return NextResponse.next();
+      }
     } catch { /* fall through to challenge */ }
   }
 

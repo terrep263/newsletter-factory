@@ -1,90 +1,107 @@
-import { db } from "@/lib/supabase";
-import lm from "@/lib/letterman";
-import gc from "@/lib/globalcontrol";
+import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic"; // always live
+export const metadata: Metadata = {
+  title: "The Newsletter Factory — A Common Ground Press project",
+  description:
+    "Hyperlocal newsletters that give communities the real news of where they live — plainly, reliably, without the noise.",
+};
 
-async function getStats() {
-  const [brands, issues, items] = await Promise.all([
-    db.from("brands").select("id", { count: "exact", head: true }),
-    db.from("issues").select("id", { count: "exact", head: true }),
-    db.from("content_items").select("id", { count: "exact", head: true }).eq("status", "new"),
-  ]);
+// Public subscribe link for the flagship newsletter. Replace with the live
+// 352 Beat signup URL when ready.
+const SUBSCRIBE_URL = "#subscribe";
 
-  let subscribers = "—";
-  let newsletters = "—";
-  try {
-    const subs = (await lm.subscribers.list()) as unknown[];
-    subscribers = String(subs.length);
-    const nls = (await lm.newsletters.list()) as unknown[];
-    newsletters = String(nls.length);
-  } catch { /* Letterman unreachable / token unset */ }
-
-  // Global Control engagement snapshot
-  let gcContacts = "—";
-  let gcActive = "—";
-  let gcDead = "—";
-  try {
-    const c = (await gc.contacts.list({ limit: 1 })) as Record<string, unknown>;
-    gcContacts = String(c.total ?? "—");
-    const open = Number(c.total_active_open ?? 0);
-    const click = Number(c.total_active_click ?? 0);
-    gcActive = String(open + click);
-    gcDead = String(c.total_dead ?? "—");
-  } catch { /* Global Control key unset */ }
-
-  return {
-    brands: brands.count ?? 0,
-    issues: issues.count ?? 0,
-    inbox: items.count ?? 0,
-    subscribers, newsletters,
-    gcContacts, gcActive, gcDead,
-  };
-}
-
-export default async function Desk() {
-  const s = await getStats();
+export default function Landing() {
   return (
-    <main>
-      <p className="kicker">Newsroom Status</p>
-      <h2 className="head">The Desk</h2>
-
-      <div className="status-row">
-        <span className="pill">Brands <b>{s.brands}</b></span>
-        <span className="pill">Issues <b>{s.issues}</b></span>
-        <span className="pill">Inbox (unreviewed) <b>{s.inbox}</b></span>
-        <span className="pill">Letterman newsletters <b>{s.newsletters}</b></span>
-        <span className="pill">Subscribers <b>{s.subscribers}</b></span>
-      </div>
-
-      <p className="kicker">Audience Engagement · Global Control</p>
-      <div className="status-row">
-        <span className="pill">Tracked contacts <b>{s.gcContacts}</b></span>
-        <span className="pill">Active (open/click) <b>{s.gcActive}</b></span>
-        <span className="pill">Dead <b>{s.gcDead}</b></span>
-      </div>
-
-      <div className="grid">
-        <div className="card">
-          <span className="tag live">Live</span>
-          <h3>Collect</h3>
-          <p className="meta">352 sources → content inbox</p>
-          <p>Permits, government agendas, and events get pulled, deduped, and queued for your review.</p>
-          <a href="/sources">Manage sources →</a>
+    <div className="landing">
+      <header className="landing-top">
+        <div className="brand">
+          <span className="brand-name">The Newsletter Factory</span>
+          <span className="brand-sub">A Common Ground Press project</span>
         </div>
-        <div className="card">
-          <h3>Assemble</h3>
-          <p className="meta">Inbox → issue</p>
-          <p>Approve items, drop them into an issue, and push to Letterman for layout and send.</p>
-          <a href="/issues">Build an issue →</a>
+        <a className="top-cta" href={SUBSCRIBE_URL}>Subscribe</a>
+      </header>
+
+      <section className="hero">
+        <p className="hero-kicker">Common Ground Press</p>
+        <h1 className="hero-title">Where communities<br />find common ground.</h1>
+        <p className="hero-lede">
+          The Newsletter Factory builds hyperlocal newsletters that give neighbors
+          the real news of where they live — plainly, reliably, without the noise.
+        </p>
+        <div className="hero-actions">
+          <a className="btn-primary" href={SUBSCRIBE_URL}>Read The 352 Beat</a>
+          <a className="btn-text" href="#what">What we do →</a>
         </div>
-        <div className="card">
-          <h3>Publish & Target</h3>
-          <p className="meta">Letterman → engaged segments</p>
-          <p>Send through Letterman, and use Global Control segments to reach active subscribers and fire follow-up tags.</p>
-          <a href="/issues">View issues →</a>
+      </section>
+
+      <section className="why">
+        <span className="rule-label">The why</span>
+        <p className="big-statement">
+          Local news is vanishing. Papers are closing, town updates are buried in
+          social feeds, and what's left is noise. Communities are losing track of
+          their own place — what's being built, what's closing, what's happening
+          this weekend.
+        </p>
+      </section>
+
+      <section id="what" className="provide">
+        <span className="rule-label">What we provide</span>
+        <h2 className="block-head">Clear newsletters for a place and the people in it.</h2>
+        <div className="pillars">
+          <div className="pillar">
+            <h3>Government &amp; Development</h3>
+            <p>The decisions and projects shaping your town — in plain language you can actually follow.</p>
+          </div>
+          <div className="pillar">
+            <h3>Local Business</h3>
+            <p>What's opening, what's closing, and the places worth your time and your dollars.</p>
+          </div>
+          <div className="pillar">
+            <h3>Events</h3>
+            <p>The festivals, meetings, and gatherings worth showing up for this week.</p>
+          </div>
+          <div className="pillar">
+            <h3>Community</h3>
+            <p>The neighbors and stories that make a place feel like one.</p>
+          </div>
         </div>
-      </div>
-    </main>
+      </section>
+
+      <section className="cgp">
+        <span className="rule-label light">Part of Common Ground Press</span>
+        <p className="cgp-body">
+          Common Ground Press publishes work that meets people where they are and
+          tells the truth plainly — from inner work to local life. The Newsletter
+          Factory carries that mission into communities: the same commitment to
+          clarity, evidence, and respect for the reader, pointed at the place you
+          call home.
+        </p>
+      </section>
+
+      <section className="promise">
+        <span className="rule-label">The promise</span>
+        <h2 className="block-head">Built for the long haul, not the quick extraction.</h2>
+        <p className="promise-body">
+          No clickbait, no outrage farming, no selling your attention to the highest
+          bidder. Just a steady, trusted signal for your community — the kind of thing
+          you'd want to still be reading in ten years.
+        </p>
+      </section>
+
+      <section id="subscribe" className="flagship">
+        <p className="flag-kicker">Now publishing</p>
+        <h2 className="flag-title">The 352 Beat</h2>
+        <p className="flag-sub">
+          Central Florida's hyperlocal newsletter — covering Lake, Marion, Sumter,
+          Alachua, Citrus, and Hernando counties.
+        </p>
+        <a className="btn-primary big" href={SUBSCRIBE_URL}>Subscribe free</a>
+      </section>
+
+      <footer className="landing-foot">
+        <span>Common Ground Press · an ATLV Solutions project</span>
+        <a href="/desk" className="staff">Staff login</a>
+      </footer>
+    </div>
   );
 }
