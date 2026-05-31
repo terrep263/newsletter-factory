@@ -4,8 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
  * Login gate (HTTP Basic Auth) for the internal factory tool.
  * Single-operator — no account system needed.
  *
- * PUBLIC (no auth): the marketing landing page "/" and /api/cron
- * (cron carries its own CRON_SECRET). Everything else requires login.
+ * PUBLIC (no auth): the marketing landing page "/", /api/cron, and
+ * /api/top-story (the public Story-of-the-Week feed for landing pages).
+ * Everything else requires login.
  *
  * Credentials: FACTORY_USER / FACTORY_PASS (Coolify env). If either is
  * unset the gate is OPEN, so a first deploy can't lock itself out.
@@ -22,6 +23,7 @@ export function middleware(req: NextRequest) {
   // public routes
   if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
   if (pathname.startsWith("/api/cron")) return NextResponse.next();
+  if (pathname.startsWith("/api/top-story")) return NextResponse.next();
 
   const USER = process.env.FACTORY_USER;
   const PASS = process.env.FACTORY_PASS;
