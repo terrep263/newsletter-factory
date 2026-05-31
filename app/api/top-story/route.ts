@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   try {
     const { data, error } = await db
       .from("top_story")
-      .select("headline, blurb, location, image_url, link_url, created_at")
+      .select("headline, blurb, location, image_url, link_url, body, created_at")
       .eq("brand_id", brandId)
       .order("created_at", { ascending: false })
       .limit(1);
