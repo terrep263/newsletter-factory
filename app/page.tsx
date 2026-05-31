@@ -6,9 +6,8 @@ export const metadata: Metadata = {
     "Hyperlocal newsletters that give communities the real news of where they live — plainly, reliably, without the noise.",
 };
 
-// Public subscribe link for the flagship newsletter. Replace with the live
-// 352 Beat signup URL when ready.
-const SUBSCRIBE_URL = "#subscribe";
+// Public subscribe link for the flagship newsletter.
+const SUBSCRIBE_URL = "https://the352beat.com";
 
 export default function Landing() {
   return (
@@ -22,7 +21,7 @@ export default function Landing() {
           <div className="w-nav-links">
             <a href="#what">What we do</a>
             <a href="#cgp">Common Ground Press</a>
-            <a className="w-pill w-pill-lime" href={SUBSCRIBE_URL}>Subscribe</a>
+            <a className="w-pill w-pill-lime" href={SUBSCRIBE_URL} target="_blank" rel="noopener noreferrer">Subscribe</a>
           </div>
         </div>
       </nav>
@@ -38,7 +37,7 @@ export default function Landing() {
             the real news of where they live — plainly, reliably, without the noise.
           </p>
           <div className="w-hero-cta">
-            <a className="w-pill w-pill-lime w-lg" href={SUBSCRIBE_URL}>Read The 352 Beat</a>
+            <a className="w-pill w-pill-lime w-lg" href={SUBSCRIBE_URL} target="_blank" rel="noopener noreferrer">Read The 352 Beat</a>
             <a className="w-pill w-pill-ghost w-lg" href="#what">What we do</a>
           </div>
         </div>
@@ -118,7 +117,7 @@ export default function Landing() {
             Central Florida's hyperlocal newsletter — covering Lake, Marion, Sumter,
             Alachua, Citrus, and Hernando counties.
           </p>
-          <a className="w-pill w-pill-dark w-lg" href={SUBSCRIBE_URL}>Subscribe free</a>
+          <a className="w-pill w-pill-dark w-lg" href={SUBSCRIBE_URL} target="_blank" rel="noopener noreferrer">Subscribe free</a>
         </div>
       </section>
 
