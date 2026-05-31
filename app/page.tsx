@@ -1,5 +1,6 @@
 import { db } from "@/lib/supabase";
 import lm from "@/lib/letterman";
+import gc from "@/lib/globalcontrol";
 
 export const dynamic = "force-dynamic"; // always live
 
@@ -17,14 +18,27 @@ async function getStats() {
     subscribers = String(subs.length);
     const nls = (await lm.newsletters.list()) as unknown[];
     newsletters = String(nls.length);
-  } catch { /* Letterman unreachable / token unset — leave dashes */ }
+  } catch { /* Letterman unreachable / token unset */ }
+
+  // Global Control engagement snapshot
+  let gcContacts = "—";
+  let gcActive = "—";
+  let gcDead = "—";
+  try {
+    const c = (await gc.contacts.list({ limit: 1 })) as Record<string, unknown>;
+    gcContacts = String(c.total ?? "—");
+    const open = Number(c.total_active_open ?? 0);
+    const click = Number(c.total_active_click ?? 0);
+    gcActive = String(open + click);
+    gcDead = String(c.total_dead ?? "—");
+  } catch { /* Global Control key unset */ }
 
   return {
     brands: brands.count ?? 0,
     issues: issues.count ?? 0,
     inbox: items.count ?? 0,
-    subscribers,
-    newsletters,
+    subscribers, newsletters,
+    gcContacts, gcActive, gcDead,
   };
 }
 
@@ -43,6 +57,13 @@ export default async function Desk() {
         <span className="pill">Subscribers <b>{s.subscribers}</b></span>
       </div>
 
+      <p className="kicker">Audience Engagement · Global Control</p>
+      <div className="status-row">
+        <span className="pill">Tracked contacts <b>{s.gcContacts}</b></span>
+        <span className="pill">Active (open/click) <b>{s.gcActive}</b></span>
+        <span className="pill">Dead <b>{s.gcDead}</b></span>
+      </div>
+
       <div className="grid">
         <div className="card">
           <span className="tag live">Live</span>
@@ -58,9 +79,9 @@ export default async function Desk() {
           <a href="/issues">Build an issue →</a>
         </div>
         <div className="card">
-          <h3>Publish</h3>
-          <p className="meta">Letterman → subscribers</p>
-          <p>Schedule or send through your existing Letterman account and audience.</p>
+          <h3>Publish & Target</h3>
+          <p className="meta">Letterman → engaged segments</p>
+          <p>Send through Letterman, and use Global Control segments to reach active subscribers and fire follow-up tags.</p>
           <a href="/issues">View issues →</a>
         </div>
       </div>
