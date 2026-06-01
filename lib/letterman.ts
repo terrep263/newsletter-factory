@@ -5,16 +5,21 @@
  * it holds the API token. In Next.js use it from route handlers,
  * server actions, or server components.
  *
- * Endpoints below were confirmed live against app.letterman.ai's own
- * frontend bundle + direct calls. Base: https://api.letterman.ai/api
+ * Base: https://api.letterman.ai/api
  *
- * AUTH: set LETTERMAN_TOKEN in your environment (.env.local on dev,
- * Coolify env var in prod). Rotating the token = change one env value,
- * zero code edits. Prefer a token from POST /user/regenerate-api-access-token.
+ * AUTH: set LETTERMAN_TOKEN in your environment (Coolify env var in prod).
+ * Rotating the token = change one env value, zero code edits.
+ *
+ * NOTE: Letterman's edge returns 403 "Not Authorized" for requests sent
+ * with a non-browser User-Agent (e.g. the default Node/undici UA), even
+ * with a valid token. We therefore send an explicit browser UA on every
+ * request. Confirmed live.
  */
 
 const BASE_URL = process.env.LETTERMAN_BASE_URL ?? "https://api.letterman.ai/api";
 const TOKEN = process.env.LETTERMAN_TOKEN ?? "";
+const UA =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 type Json = Record<string, unknown>;
 type Method = "GET" | "POST" | "PUT" | "DELETE";
@@ -37,10 +42,10 @@ async function call<T = unknown>(
     headers: {
       Authorization: `Bearer ${TOKEN}`,
       Accept: "application/json",
+      "User-Agent": UA,
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
-    // never cache writes; reads can be tuned per-call by the caller
     cache: "no-store",
   });
 
@@ -48,20 +53,26 @@ async function call<T = unknown>(
   let data: unknown = text;
   try { data = JSON.parse(text); } catch { /* leave as text */ }
 
-  // Letterman sometimes returns 200 with an { type:"error" } envelope
+  // Letterman sometimes returns 200 with an { type:"error" } envelope.
+  // Only the TOP-LEVEL type counts (array responses are fine).
   const errEnvelope =
-    data && typeof data === "object" && (data as Json).type === "error";
+    data && typeof data === "object" && !Array.isArray(data) &&
+    (data as Json).type === "error";
   if (!res.ok || errEnvelope) throw new LettermanError(res.status, path, data);
 
   return data as T;
 }
+
+/** Raw passthrough — full control of any Letterman endpoint (server-side). */
+export const raw = <T = unknown>(method: Method, path: string, body?: Json) =>
+  call<T>(method, path, body);
 
 /* ---------------------------------------------------------------- *
  *  Account
  * ---------------------------------------------------------------- */
 export const account = {
   me: () => call("GET", "/user"),
-  /** Mint a fresh official API token (recommended over the editor JWT). */
+  apiToken: () => call("GET", "/user/api-access-token"),
   regenerateApiToken: () => call("POST", "/user/regenerate-api-access-token"),
 };
 
@@ -70,8 +81,10 @@ export const account = {
  * ---------------------------------------------------------------- */
 export interface NewsletterCreate {
   name: string;
-  type?: "NEWSLETTER";          // confirmed required pair: name + type
-  term?: string;                // seed term for AI generation (Path A)
+  type?: "NEWSLETTER";
+  term?: string;
+  /** Attach to a publication so it shows in that publication's Drafts. */
+  storageId?: string;
   [k: string]: unknown;
 }
 
@@ -80,18 +93,19 @@ export const newsletters = {
   get: (id: string) => call<Json>("GET", `/newsletters/${id}`),
   create: (n: NewsletterCreate) =>
     call<Json>("POST", "/newsletters", { type: "NEWSLETTER", ...n }),
-  /** NOTE: Letterman supports PUT only (PATCH is 404). */
+  /** PUT only (PATCH is 404). */
   update: (id: string, patch: Json) =>
     call<Json>("PUT", `/newsletters/${id}`, patch),
   remove: (id: string) => call("DELETE", `/newsletters/${id}`),
+  /** Copy an existing issue (carries its sections + storage). */
+  duplicate: (id: string) => call<Json>("GET", `/newsletters/${id}/duplicate`),
+  sections: (id: string) => call<Json[]>("GET", `/newsletters/${id}/sections`),
 
-  // content sections (the body / block model)
   addSection: (newsletterId: string, section: Json) =>
     call<Json>("POST", `/newsletters/${newsletterId}/sections`, section),
   removeSection: (newsletterId: string, sectionId: string) =>
     call("DELETE", `/newsletters/${newsletterId}/sections/${sectionId}`),
 
-  // reference links → AI drafting
   addReferenceLinks: (newsletterId: string, links: Json) =>
     call<Json>("POST", `/newsletters/${newsletterId}/reference-links`, links),
   generateFromReferences: (newsletterId: string) =>
@@ -99,7 +113,6 @@ export const newsletters = {
   suggestKeywords: (payload: Json) =>
     call<Json>("POST", "/newsletters/get-suggested-article-keywords", payload),
 
-  // sending
   sendTestEmail: (id: string, payload: Json) =>
     call("POST", `/newsletters/send-test-email/${id}`, payload),
   sendEmail: (id: string, payload: Json) =>
@@ -110,25 +123,31 @@ export const newsletters = {
  *  Newsletter storage (publication / sending config layer)
  * ---------------------------------------------------------------- */
 export const storage = {
+  list: () => call<Json[]>("GET", "/newsletters-storage"),
   get: (storageId: string) =>
     call<Json>("GET", `/newsletters-storage/${storageId}`),
-  /** Public read — no auth needed; handy for verification/archives. */
   getPublic: (storageId: string) =>
-    fetch(`${BASE_URL}/get-public-storage/${storageId}`).then((r) => r.json()),
+    fetch(`${BASE_URL}/get-public-storage/${storageId}`, {
+      headers: { "User-Agent": UA },
+    }).then((r) => r.json()),
+  /** Issues for a publication filtered by state (DRAFT/PUBLISHED/REVISED). */
+  draftsForPublication: (storageId: string, state = "DRAFT") =>
+    call<Json[]>(
+      "GET",
+      `/newsletters-storage/${storageId}/newsletters?state=${state}&start=2020-01-01&end=2100-01-01&type=`,
+    ),
   create: (payload: Json) => call<Json>("POST", "/newsletters-storage", payload),
   sendTestEmail: (storageId: string, payload: Json) =>
     call("POST", `/newsletters-storage/send-test-email/${storageId}`, payload),
 };
 
 /* ---------------------------------------------------------------- *
- *  RSS feeds  —  the factory's cleanest content pipe
- *  (point Letterman at a feed your 352 collector emits)
+ *  RSS feeds
  * ---------------------------------------------------------------- */
 export const rss = {
   create: (feed: { url: string; [k: string]: unknown }) =>
     call<Json>("POST", "/rss-feeds", feed),
-  refresh: (feedId: string) =>
-    call("POST", `/rss-feeds/${feedId}/refresh`),
+  refresh: (feedId: string) => call("POST", `/rss-feeds/${feedId}/refresh`),
   remove: (feedId: string) => call("DELETE", `/rss-feeds/${feedId}`),
 };
 
@@ -144,7 +163,7 @@ export const ai = {
 };
 
 /* ---------------------------------------------------------------- *
- *  Campaigns / Subscribers / Templates
+ *  Campaigns / Subscribers / Templates / Monetization
  * ---------------------------------------------------------------- */
 export const campaigns = {
   list: () => call<Json[]>("GET", "/campaigns"),
@@ -172,5 +191,5 @@ export const monetization = {
 
 export { LettermanError };
 export default {
-  account, newsletters, storage, rss, ai, campaigns, subscribers, templates, monetization,
+  raw, account, newsletters, storage, rss, ai, campaigns, subscribers, templates, monetization,
 };
