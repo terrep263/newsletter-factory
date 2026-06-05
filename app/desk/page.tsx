@@ -2,7 +2,7 @@ import { db } from "@/lib/supabase";
 import lm from "@/lib/letterman";
 import gc from "@/lib/globalcontrol";
 
-export const dynamic = "force-dynamic"; // always live
+export const dynamic = "force-dynamic";
 
 async function getStats() {
   const [brands, issues, items] = await Promise.all([
@@ -20,7 +20,6 @@ async function getStats() {
     newsletters = String(nls.length);
   } catch { /* Letterman unreachable / token unset */ }
 
-  // Global Control engagement snapshot
   let gcContacts = "—";
   let gcActive = "—";
   let gcDead = "—";
@@ -48,7 +47,6 @@ export default async function Desk() {
     <main>
       <p className="kicker">Newsroom Status</p>
       <h2 className="head">The Desk</h2>
-
       <div className="status-row">
         <span className="pill">Brands <b>{s.brands}</b></span>
         <span className="pill">Issues <b>{s.issues}</b></span>
@@ -56,34 +54,16 @@ export default async function Desk() {
         <span className="pill">Letterman newsletters <b>{s.newsletters}</b></span>
         <span className="pill">Subscribers <b>{s.subscribers}</b></span>
       </div>
-
       <p className="kicker">Audience Engagement · Global Control</p>
       <div className="status-row">
         <span className="pill">Tracked contacts <b>{s.gcContacts}</b></span>
         <span className="pill">Active (open/click) <b>{s.gcActive}</b></span>
         <span className="pill">Dead <b>{s.gcDead}</b></span>
       </div>
-
       <div className="grid">
-        <div className="card">
-          <span className="tag live">Live</span>
-          <h3>Collect</h3>
-          <p className="meta">352 sources → content inbox</p>
-          <p>Permits, government agendas, and events get pulled, deduped, and queued for your review.</p>
-          <a href="/sources">Manage sources →</a>
-        </div>
-        <div className="card">
-          <h3>Assemble</h3>
-          <p className="meta">Inbox → issue</p>
-          <p>Approve items, drop them into an issue, and push to Letterman for layout and send.</p>
-          <a href="/issues">Build an issue →</a>
-        </div>
-        <div className="card">
-          <h3>Publish & Target</h3>
-          <p className="meta">Letterman → engaged segments</p>
-          <p>Send through Letterman, and use Global Control segments to reach active subscribers and fire follow-up tags.</p>
-          <a href="/issues">View issues →</a>
-        </div>
+        <div className="card"><span className="tag live">Live</span><h3>Collect</h3><p className="meta">352 sources → content inbox</p><p>Permits, government agendas, and events get pulled, deduped, and queued for your review.</p><a href="/sources">Manage sources →</a></div>
+        <div className="card"><h3>Assemble</h3><p className="meta">Inbox → issue</p><p>Approve items, drop them into an issue, and push to Letterman for layout and send.</p><a href="/issues">Build an issue →</a></div>
+        <div className="card"><h3>Publish &amp; Target</h3><p className="meta">Letterman → engaged segments</p><p>Send through Letterman, and use Global Control segments to reach active subscribers and fire follow-up tags.</p><a href="/issues">View issues →</a></div>
       </div>
     </main>
   );

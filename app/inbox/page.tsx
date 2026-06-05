@@ -32,7 +32,6 @@ export default function InboxPage() {
   async function buildIssue() {
     const ids = Object.keys(sel).filter((k) => sel[k]);
     if (!ids.length) { setMsg("Select at least one item."); return; }
-    // all selected items share a brand; use the first item's brand via inbox fetch
     const brandRes = await fetch("/api/brands").then((r) => r.json());
     const brand_id = brandRes.brands?.[0]?.id;
     const title = `The 352 Beat — ${new Date().toLocaleDateString()}`;
@@ -53,13 +52,11 @@ export default function InboxPage() {
     <main>
       <p className="kicker">Assemble</p>
       <h2 className="head">Content Inbox</h2>
-
       <div className="status-row">
         {["new", "approved", "rejected", "used", "all"].map((s) => (
           <button key={s} className={`pill-btn ${status === s ? "on" : ""}`} onClick={() => setStatus(s)}>{s}</button>
         ))}
       </div>
-
       {selectedCount > 0 && (
         <div className="card" style={{ marginTop: "1rem" }}>
           <b>{selectedCount} selected</b>
@@ -67,7 +64,6 @@ export default function InboxPage() {
         </div>
       )}
       {msg && <p className="meta" style={{ marginTop: ".75rem" }}>{msg}</p>}
-
       {loading ? <p>Loading…</p> : items.length === 0 ? (
         <p className="meta">No {status} items. Run the collector on the Sources page.</p>
       ) : (
