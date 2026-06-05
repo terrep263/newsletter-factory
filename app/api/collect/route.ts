@@ -4,7 +4,6 @@ import { collectBrand } from "@/lib/collector";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// POST { brand_id }  -> runs all active sources for the brand
 export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => null);
   if (!b?.brand_id) return NextResponse.json({ error: "brand_id required" }, { status: 400 });

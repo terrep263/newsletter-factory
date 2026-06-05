@@ -5,15 +5,6 @@ import { collectBrand } from "@/lib/collector";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-/**
- * Scheduled collection endpoint.
- * Collects every active brand's active sources into the inbox.
- *
- * Protected by a shared secret: the caller must send
- *   Authorization: Bearer <CRON_SECRET>
- * (or ?key=<CRON_SECRET>). If CRON_SECRET is unset, the route refuses
- * to run — no accidental open trigger.
- */
 async function authorized(req: NextRequest): Promise<boolean> {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -49,5 +40,4 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST behaves identically — Coolify scheduled tasks can use either.
 export async function POST(req: NextRequest) { return GET(req); }
