@@ -4,13 +4,10 @@
  * Never import into a client component.
  *
  * Lazy initialization: the client is created on first use, not at module
- * load. This keeps `next build` from needing runtime secrets (the build
- * only analyzes routes; it shouldn't connect to anything).
+ * load. This keeps `next build` from needing runtime secrets.
  */
 import { createClient } from "@supabase/supabase-js";
 
-// Loosely typed at the boundary so query payloads aren't inferred as `never`
-// (we don't generate DB types). App-level typing comes from the interfaces below.
 type AnyClient = any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 let _client: AnyClient | null = null;
@@ -29,10 +26,6 @@ function getClient(): AnyClient {
   return _client;
 }
 
-/**
- * Proxy that forwards property access to the real client, created lazily.
- * Lets callers keep using `db.from(...)` exactly as before.
- */
 export const db: AnyClient = new Proxy({} as AnyClient, {
   get(_target, prop) {
     const client = getClient();
@@ -41,7 +34,6 @@ export const db: AnyClient = new Proxy({} as AnyClient, {
   },
 });
 
-// --- typed row helpers (kept light; expand as the app grows) ---
 export interface Brand {
   id: string;
   name: string;

@@ -1,24 +1,17 @@
 /**
  * The 352 Collector — Newsletter Factory
- * ------------------------------------------------------------------
  * Pulls items from a brand's content_sources into content_items.
- *
- * v1 supports RSS/Atom sources (the most automatable path). Each item
- * is normalized, hashed for dedupe, and inserted with status "new" so
- * it lands in the Content Inbox for review.
- *
- * Adding a new source type later = add a fetcher to FETCHERS; the
- * pipeline (dedupe, insert, last_pulled stamp) stays the same.
+ * v1 supports RSS/Atom sources.
  */
 import { db } from "@/lib/supabase";
 import crypto from "crypto";
 
 export interface NormalizedItem {
-  item_type: string;            // story | event | permit | agenda
+  item_type: string;
   title: string;
   body?: string | null;
   url?: string | null;
-  event_date?: string | null;  // YYYY-MM-DD
+  event_date?: string | null;
   location?: string | null;
   raw?: Record<string, unknown>;
 }
@@ -28,7 +21,7 @@ export interface CollectResult {
   source_name: string;
   fetched: number;
   inserted: number;
-  skipped: number;     // dupes
+  skipped: number;
   error?: string;
 }
 
@@ -39,10 +32,8 @@ function hash(brandId: string, title: string, url?: string | null): string {
     .digest("hex");
 }
 
-/* ----------------------------- RSS / Atom ----------------------------- */
 function pick(block: string, tags: string[]): string | null {
   for (const tag of tags) {
-    // <tag ...>VALUE</tag>  (handles CDATA + attributes)
     const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
     const m = block.match(re);
     if (m) {
@@ -78,12 +69,11 @@ async function fetchRss(url: string, defaultType: string): Promise<NormalizedIte
   if (!res.ok) throw new Error(`RSS fetch ${res.status}`);
   const xml = await res.text();
 
-  // split into <item> (RSS) or <entry> (Atom) blocks
   const blocks = xml.match(/<(item|entry)[\s\S]*?<\/\1>/gi) ?? [];
   return blocks.slice(0, 40).map((b) => {
     const title = pick(b, ["title"]) ?? "(untitled)";
     let link = pick(b, ["link"]);
-    if (!link) link = pickAttr(b, "link", "href"); // Atom style
+    if (!link) link = pickAttr(b, "link", "href");
     const body = pick(b, ["description", "summary", "content:encoded", "content"]);
     const date = toISODate(pick(b, ["pubDate", "published", "updated", "dc:date"]));
     return {
@@ -103,7 +93,6 @@ const FETCHERS: Record<string, Fetcher> = {
   atom: fetchRss,
 };
 
-/* ----------------------------- pipeline ----------------------------- */
 export async function collectSource(source: {
   id: string; brand_id: string; name: string; source_type: string;
   url?: string | null; config?: Record<string, unknown>;
@@ -123,7 +112,6 @@ export async function collectSource(source: {
 
     for (const it of items) {
       const dedupe_hash = hash(source.brand_id, it.title, it.url);
-      // dedupe: skip if a content_item with this hash already exists
       const existing = await db
         .from("content_items").select("id", { head: true, count: "exact" })
         .eq("dedupe_hash", dedupe_hash);
@@ -143,7 +131,6 @@ export async function collectSource(source: {
         dedupe_hash,
       });
       if (ins.error) {
-        // unique violation = raced dupe; count as skip, else surface
         if (String(ins.error.code) === "23505") result.skipped++;
         else throw new Error(ins.error.message);
       } else {
