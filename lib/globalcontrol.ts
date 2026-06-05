@@ -1,19 +1,6 @@
 /**
  * Global Control API client — Newsletter Factory
- * ------------------------------------------------------------------
- * Server-side ONLY. Holds the API key; never import into the browser.
- *
- * Base:   https://api.globalcontrol.io/api/ai
- * Auth:   X-API-KEY header
- * Wrapper: success -> { type:"response", data:{...} }
- *          error   -> { type:"error", error:{...} }
- *
- * AUTH: set GLOBALCONTROL_API_KEY in the environment (Coolify env var).
- * Rotating the key = change one env value, no code edits.
- *
- * What this unlocks for the factory: engagement-aware sending.
- * Read contact segments (active/dead/etc.) and smart lists, and fire
- * tags that trigger Global Control workflows.
+ * Server-side ONLY. Base: https://api.globalcontrol.io/api/ai  Auth: X-API-KEY
  */
 
 const BASE_URL =
@@ -64,40 +51,32 @@ async function call<T = unknown>(
     parsed && typeof parsed === "object" && (parsed as Json).type === "error";
   if (!res.ok || isErr) throw new GlobalControlError(res.status, path, parsed);
 
-  // unwrap the { type:"response", data } envelope
   if (parsed && typeof parsed === "object" && "data" in (parsed as Json)) {
     return (parsed as Json).data as T;
   }
   return parsed as T;
 }
 
-/* ---------------------------------------------------------------- *
- *  Account
- * ---------------------------------------------------------------- */
 export const account = {
   me: () => call("GET", "/users/me"),
 };
 
-/* ---------------------------------------------------------------- *
- *  Contacts  (engagement segments are the valuable part)
- * ---------------------------------------------------------------- */
 export type Activity =
   | "new" | "inactive" | "passive" | "active"
   | "active_open" | "active_click" | "dead" | "undeliverable";
 
 export interface ContactQuery extends Query {
   page?: number;
-  limit?: number;     // -1 for all
-  tags?: string;      // tag id filter
+  limit?: number;
+  tags?: string;
   activity?: Activity;
   search?: string;
-  phone?: string;     // "1" to require a phone
+  phone?: string;
   sort?: string;
 }
 
 export const contacts = {
   list: (q?: ContactQuery) => call<Json>("GET", "/contacts", { query: q }),
-  // pre-segmented shortcuts
   activeOpen: (q?: ContactQuery) => call<Json>("GET", "/contacts/active-open", { query: q }),
   activeClick: (q?: ContactQuery) => call<Json>("GET", "/contacts/active-click", { query: q }),
   inactive: (q?: ContactQuery) => call<Json>("GET", "/contacts/inactive", { query: q }),
@@ -115,9 +94,6 @@ export const contacts = {
   remove: (id: string) => call<Json>("DELETE", `/contacts/${id}`),
 };
 
-/* ---------------------------------------------------------------- *
- *  Tags  (fire-tag is the automation trigger)
- * ---------------------------------------------------------------- */
 export const tags = {
   list: () => call<Json[]>("GET", "/tags"),
   get: (id: string) => call<Json>("GET", `/tags/${id}`),
@@ -125,20 +101,14 @@ export const tags = {
     call<Json>("POST", "/tags", { body: t }),
   update: (id: string, patch: Json) => call<Json>("PUT", `/tags/${id}`, { body: patch }),
   remove: (id: string) => call<Json>("DELETE", `/tags/${id}`),
-
   withContactStatus: () => call<Json[]>("GET", "/tags/list-with-contact-status"),
   contacts: (id: string) => call<Json>("GET", `/tags/${id}/contacts`),
-
-  /** Fire a tag for a contact — creates if missing, triggers workflows. */
   fire: (tagId: string, contact: { email: string; firstName?: string; lastName?: string; phone?: string; ignoreTagFire?: boolean }) =>
     call<Json>("POST", `/tags/fire-tag/${tagId}`, { body: contact }),
   fireMany: (payload: { email: string; tagIds: string[]; firstName?: string; lastName?: string; phone?: string; ignoreTagFire?: boolean }) =>
     call<Json>("POST", "/tags/fire-tags", { body: payload }),
 };
 
-/* ---------------------------------------------------------------- *
- *  Tag groups & labels
- * ---------------------------------------------------------------- */
 export const tagGroups = {
   list: () => call<Json[]>("GET", "/tag-groups"),
   get: (id: string) => call<Json>("GET", `/tag-groups/${id}`),
@@ -153,14 +123,10 @@ export const tagLabels = {
   create: (l: { name: string; color: string }) => call<Json>("POST", "/tags-labels", { body: l }),
   update: (id: string, patch: Json) => call<Json>("PUT", `/tags-labels/${id}`, { body: patch }),
   remove: (id: string) => call<Json>("DELETE", `/tags-labels/${id}`),
-  /** 8-metric engagement breakdown; use "all" for every tag. */
   stats: (id: string, groupId?: string) =>
     call<Json>("GET", `/tags-labels/${id}/stats`, { query: { groupId } }),
 };
 
-/* ---------------------------------------------------------------- *
- *  Smart Lists  (saved segments with include/exclude tag logic)
- * ---------------------------------------------------------------- */
 export const smartListGroups = {
   list: () => call<Json[]>("GET", "/smart-list-groups"),
   get: (id: string) => call<Json>("GET", `/smart-list-groups/${id}`),
@@ -173,8 +139,8 @@ export interface SmartListInput {
   name: string;
   description?: string;
   groupId?: string;
-  groups?: string[];        // included tag-group ids
-  tags?: string[];          // included tag ids
+  groups?: string[];
+  tags?: string[];
   excludeGroups?: string[];
   excludeTags?: string[];
 }
@@ -189,9 +155,6 @@ export const smartLists = {
   count: (smartListId: string) => call<Json>("POST", "/smart-lists/contact-count", { body: { smartListId } }),
 };
 
-/* ---------------------------------------------------------------- *
- *  Integrations & sub-users (read)
- * ---------------------------------------------------------------- */
 export const integrations = {
   list: () => call<Json[]>("GET", "/integrations"),
   connected: (q?: Query) => call<Json[]>("GET", "/integrations/connected", { query: q }),

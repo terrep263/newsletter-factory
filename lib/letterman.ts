@@ -1,19 +1,8 @@
 /**
- * Letterman API Client  —  Newsletter Factory foundation
- * ------------------------------------------------------------------
- * Server-side ONLY. Never import this into a client/browser component;
- * it holds the API token. In Next.js use it from route handlers,
- * server actions, or server components.
- *
+ * Letterman API Client — Newsletter Factory foundation
+ * Server-side ONLY. Holds the API token; never import into the browser.
  * Base: https://api.letterman.ai/api
- *
- * AUTH: set LETTERMAN_TOKEN in your environment (Coolify env var in prod).
- * Rotating the token = change one env value, zero code edits.
- *
- * NOTE: Letterman's edge returns 403 "Not Authorized" for requests sent
- * with a non-browser User-Agent (e.g. the default Node/undici UA), even
- * with a valid token. We therefore send an explicit browser UA on every
- * request. Confirmed live.
+ * AUTH: set LETTERMAN_TOKEN in env (Coolify env var in prod).
  */
 
 const BASE_URL = process.env.LETTERMAN_BASE_URL ?? "https://api.letterman.ai/api";
@@ -53,8 +42,6 @@ async function call<T = unknown>(
   let data: unknown = text;
   try { data = JSON.parse(text); } catch { /* leave as text */ }
 
-  // Letterman sometimes returns 200 with an { type:"error" } envelope.
-  // Only the TOP-LEVEL type counts (array responses are fine).
   const errEnvelope =
     data && typeof data === "object" && !Array.isArray(data) &&
     (data as Json).type === "error";
@@ -67,23 +54,16 @@ async function call<T = unknown>(
 export const raw = <T = unknown>(method: Method, path: string, body?: Json) =>
   call<T>(method, path, body);
 
-/* ---------------------------------------------------------------- *
- *  Account
- * ---------------------------------------------------------------- */
 export const account = {
   me: () => call("GET", "/user"),
   apiToken: () => call("GET", "/user/api-access-token"),
   regenerateApiToken: () => call("POST", "/user/regenerate-api-access-token"),
 };
 
-/* ---------------------------------------------------------------- *
- *  Newsletters (the issue / metadata layer)
- * ---------------------------------------------------------------- */
 export interface NewsletterCreate {
   name: string;
   type?: "NEWSLETTER";
   term?: string;
-  /** Attach to a publication so it shows in that publication's Drafts. */
   storageId?: string;
   [k: string]: unknown;
 }
@@ -93,11 +73,9 @@ export const newsletters = {
   get: (id: string) => call<Json>("GET", `/newsletters/${id}`),
   create: (n: NewsletterCreate) =>
     call<Json>("POST", "/newsletters", { type: "NEWSLETTER", ...n }),
-  /** PUT only (PATCH is 404). */
   update: (id: string, patch: Json) =>
     call<Json>("PUT", `/newsletters/${id}`, patch),
   remove: (id: string) => call("DELETE", `/newsletters/${id}`),
-  /** Copy an existing issue (carries its sections + storage). */
   duplicate: (id: string) => call<Json>("GET", `/newsletters/${id}/duplicate`),
   sections: (id: string) => call<Json[]>("GET", `/newsletters/${id}/sections`),
 
@@ -119,9 +97,6 @@ export const newsletters = {
     call("POST", `/newsletters/send-email/${id}`, payload),
 };
 
-/* ---------------------------------------------------------------- *
- *  Newsletter storage (publication / sending config layer)
- * ---------------------------------------------------------------- */
 export const storage = {
   list: () => call<Json[]>("GET", "/newsletters-storage"),
   get: (storageId: string) =>
@@ -130,7 +105,6 @@ export const storage = {
     fetch(`${BASE_URL}/get-public-storage/${storageId}`, {
       headers: { "User-Agent": UA },
     }).then((r) => r.json()),
-  /** Issues for a publication filtered by state (DRAFT/PUBLISHED/REVISED). */
   draftsForPublication: (storageId: string, state = "DRAFT") =>
     call<Json[]>(
       "GET",
@@ -141,9 +115,6 @@ export const storage = {
     call("POST", `/newsletters-storage/send-test-email/${storageId}`, payload),
 };
 
-/* ---------------------------------------------------------------- *
- *  RSS feeds
- * ---------------------------------------------------------------- */
 export const rss = {
   create: (feed: { url: string; [k: string]: unknown }) =>
     call<Json>("POST", "/rss-feeds", feed),
@@ -151,9 +122,6 @@ export const rss = {
   remove: (feedId: string) => call("DELETE", `/rss-feeds/${feedId}`),
 };
 
-/* ---------------------------------------------------------------- *
- *  AI generation (prompt-output)
- * ---------------------------------------------------------------- */
 export const ai = {
   generate: (payload: Json) => call<Json>("POST", "/prompt-output/generate/", payload),
   generateFor: (id: string, payload: Json) =>
@@ -162,9 +130,6 @@ export const ai = {
     call<Json>("POST", `/prompt-output/re-generate/${id}`, payload),
 };
 
-/* ---------------------------------------------------------------- *
- *  Campaigns / Subscribers / Templates / Monetization
- * ---------------------------------------------------------------- */
 export const campaigns = {
   list: () => call<Json[]>("GET", "/campaigns"),
   get: (id: string) => call<Json>("GET", `/campaigns/${id}`),
