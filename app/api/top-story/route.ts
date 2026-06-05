@@ -15,7 +15,6 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS });
 }
 
-// Returns the current Top Story of the Week for a brand (most recent wins).
 export async function GET(req: Request) {
   const brandId = new URL(req.url).searchParams.get("brand_id") || BEAT_352;
   try {
@@ -29,9 +28,6 @@ export async function GET(req: Request) {
     const story = (data && data[0]) || null;
     return NextResponse.json({ story }, { headers: CORS });
   } catch (e) {
-    return NextResponse.json(
-      { story: null, error: e instanceof Error ? e.message : String(e) },
-      { status: 200, headers: CORS },
-    );
+    return NextResponse.json({ story: null, error: e instanceof Error ? e.message : String(e) }, { status: 200, headers: CORS });
   }
 }

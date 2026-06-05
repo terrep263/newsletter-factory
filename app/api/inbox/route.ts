@@ -3,7 +3,6 @@ import { db } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-// GET ?status=new&brand_id=...
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const status = url.searchParams.get("status") ?? "new";
@@ -16,7 +15,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ items: data });
 }
 
-// PATCH { id, status }  status in: approved | rejected | new
 export async function PATCH(req: NextRequest) {
   const b = await req.json().catch(() => null);
   if (!b?.id || !b?.status) return NextResponse.json({ error: "id and status required" }, { status: 400 });

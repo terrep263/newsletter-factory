@@ -3,7 +3,6 @@ import { db } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-// GET — list issues (most recent first)
 export async function GET(req: NextRequest) {
   const brandId = new URL(req.url).searchParams.get("brand_id");
   let q = db.from("issues").select("*").order("created_at", { ascending: false }).limit(100);
@@ -13,8 +12,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ issues: data });
 }
 
-// POST — create an issue from approved inbox items
-// { brand_id, title, item_ids: [...] }
 export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => null);
   if (!b?.brand_id || !b?.title) {
