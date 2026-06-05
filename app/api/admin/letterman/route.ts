@@ -3,13 +3,8 @@ import { raw, LettermanError } from "@/lib/letterman";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Full-control passthrough to the Letterman API (server-side; token stays
- * on the server). Protected by the app's Basic-Auth gate in middleware.ts.
- *
- * POST body: { method: "GET"|"POST"|"PUT"|"DELETE", path: "/...", body?: any }
- */
 const ALLOWED = new Set(["GET", "POST", "PUT", "DELETE"]);
+const LIVE_SEND_RE = /^\/newsletters\/send-email(\/|$)/;
 
 export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => null);
@@ -22,6 +17,14 @@ export async function POST(req: NextRequest) {
   }
   if (!path.startsWith("/")) {
     return NextResponse.json({ ok: false, error: "path must start with /" }, { status: 400 });
+  }
+
+  const normPath = decodeURIComponent(path).toLowerCase().replace(/\/+$/, "");
+  if (LIVE_SEND_RE.test(normPath + "/")) {
+    return NextResponse.json(
+      { ok: false, error: "Live broadcast sending is blocked from the raw admin console. Use send-test-email only." },
+      { status: 403 },
+    );
   }
 
   try {
