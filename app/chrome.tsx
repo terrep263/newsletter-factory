@@ -8,7 +8,6 @@ const today = () =>
 
 export default function Chrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
-  // The public landing page renders with no admin chrome.
   if (pathname === "/") return <>{children}</>;
 
   const nav = [
