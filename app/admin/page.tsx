@@ -1,117 +1,101 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
-export const dynamic = "force-dynamic";
+type Diag = {
+  token: string; factoryUser: string; factoryPass: string; approvalPassword: string;
+  liveBroadcast: boolean; rawSendBlocked: boolean; lettermanOk: boolean;
+  lettermanError?: string; issues: string[];
+};
+type Approval = { newsletterId: string; approvalStatus: string };
 
-type Resp = { ok: boolean; data?: any; status?: number; error?: string; body?: any };
+const s = {
+  h1: { color: "#0021A5", marginTop: 0 } as React.CSSProperties,
+  card: { border: "1px solid #ddd", borderRadius: 8, padding: "12px 16px", marginBottom: 12, textDecoration: "none", color: "inherit", display: "block" } as React.CSSProperties,
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px,1fr))", gap: 10 } as React.CSSProperties,
+  warn: { background: "#fff3cd", border: "1px solid #ffc107", borderRadius: 6, padding: "10px 14px", marginBottom: 14, fontSize: 13 } as React.CSSProperties,
+  ok: { background: "#d4edda", border: "1px solid #28a745", borderRadius: 6, padding: "10px 14px", marginBottom: 14, fontSize: 13 } as React.CSSProperties,
+  row: { borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 10, padding: "5px 0" } as React.CSSProperties,
+};
 
-async function call(method: string, path: string, body?: any): Promise<Resp> {
-  const r = await fetch("/api/admin/letterman", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ method, path, body }),
-  });
-  return r.json();
+function Badge({ ok, label }: { ok: boolean; label?: string }) {
+  return (
+    <span style={{ padding: "1px 7px", borderRadius: 4, fontSize: 11, fontWeight: 700, background: ok ? "#d4edda" : "#f8d7da", color: ok ? "#155724" : "#721c24" }}>
+      {label ?? (ok ? "OK" : "WARN")}
+    </span>
+  );
 }
 
-const box: React.CSSProperties = { border: "1px solid #ddd", borderRadius: 8, padding: 16, marginBottom: 16 };
-const btn: React.CSSProperties = { padding: "6px 10px", marginRight: 6, border: "1px solid #0021A5", background: "#0021A5", color: "#fff", borderRadius: 6, cursor: "pointer" };
-const btnG: React.CSSProperties = { ...btn, background: "#fff", color: "#0021A5" };
-const inp: React.CSSProperties = { padding: 6, border: "1px solid #ccc", borderRadius: 6, marginRight: 6 };
+export default function AdminControlCenter() {
+  const [diag, setDiag] = useState<Diag | null>(null);
+  const [pending, setPending] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-export default function AdminPage() {
-  const [pubs, setPubs] = useState<any[]>([]);
-  const [storageId, setStorageId] = useState("");
-  const [drafts, setDrafts] = useState<any[]>([]);
-  const [name, setName] = useState("");
-  const [out, setOut] = useState("");
-  const [rm, setRm] = useState("GET");
-  const [rp, setRp] = useState("/user");
-  const [rb, setRb] = useState("");
-
-  const show = (x: any) => setOut(typeof x === "string" ? x : JSON.stringify(x, null, 2));
-
-  async function loadPubs() {
-    const r = await call("GET", "/newsletters-storage");
-    const list = Array.isArray(r.data) ? r.data : [];
-    setPubs(list);
-    if (list[0]?._id && !storageId) setStorageId(list[0]._id);
-    show(r);
-  }
-  async function loadDrafts(sid: string) {
-    if (!sid) return;
-    const r = await call("GET", `/newsletters-storage/${sid}/newsletters?state=DRAFT&start=2020-01-01&end=2100-01-01&type=`);
-    setDrafts(Array.isArray(r.data) ? r.data : []);
-  }
-
-  useEffect(() => { loadPubs(); }, []);
-  useEffect(() => { if (storageId) loadDrafts(storageId); }, [storageId]);
-
-  async function createDraft() {
-    if (!name || !storageId) return show({ error: "name + publication required" });
-    show(await call("POST", "/newsletters", { name, type: "NEWSLETTER", storageId }));
-    setName(""); loadDrafts(storageId);
-  }
-  async function dup(id: string) { show(await call("GET", `/newsletters/${id}/duplicate`)); loadDrafts(storageId); }
-  async function rename(id: string) { const n = prompt("New name?"); if (!n) return; show(await call("PUT", `/newsletters/${id}`, { name: n })); loadDrafts(storageId); }
-  async function del(id: string) { if (!confirm("Delete permanently?")) return; show(await call("DELETE", `/newsletters/${id}`)); loadDrafts(storageId); }
-  async function sendTest(id: string) { const e = prompt("Send test to which email?"); if (!e) return; show(await call("POST", `/newsletters/send-test-email/${id}`, { email: e })); }
-
-  async function runRaw() {
-    let body: any;
-    if (rb.trim()) { try { body = JSON.parse(rb); } catch { return show("Body is not valid JSON"); } }
-    show(await call(rm, rp, body));
-  }
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/admin/diagnostics").then((r) => r.json()),
+      fetch("/api/admin/approval").then((r) => r.json()),
+    ]).then(([d, a]) => {
+      setDiag(d);
+      const approvals: Approval[] = a.approvals ?? [];
+      setPending(approvals.filter((x) => x.approvalStatus === "pending").length);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: 24, fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ color: "#0021A5" }}>Newsletter Factory — Admin Control</h1>
-      <p style={{ color: "#666" }}>Full control of Letterman via the app. Token stays server-side.</p>
-
-      <div style={box}>
-        <h3>Publication</h3>
-        <select style={inp} value={storageId} onChange={(e) => setStorageId(e.target.value)}>
-          <option value="">— select —</option>
-          {pubs.map((p) => <option key={p._id} value={p._id}>{p.name} ({p._id})</option>)}
-        </select>
-        <button style={btnG} onClick={loadPubs}>Reload</button>
-      </div>
-
-      <div style={box}>
-        <h3>Create draft (attached to publication)</h3>
-        <input style={inp} placeholder="Draft name" value={name} onChange={(e) => setName(e.target.value)} />
-        <button style={btn} onClick={createDraft}>Create</button>
-      </div>
-
-      <div style={box}>
-        <h3>Drafts ({drafts.length})</h3>
-        {drafts.map((d) => (
-          <div key={d._id} style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}>
-            <strong>{d.name}</strong> <span style={{ color: "#999" }}>{d._id} · {d.wordCount} words</span>
-            <div style={{ marginTop: 6 }}>
-              <button style={btnG} onClick={() => dup(d._id)}>Duplicate</button>
-              <button style={btnG} onClick={() => rename(d._id)}>Rename</button>
-              <button style={btnG} onClick={() => sendTest(d._id)}>Send test</button>
-              <button style={{ ...btnG, color: "#b00", borderColor: "#b00" }} onClick={() => del(d._id)}>Delete</button>
+    <main>
+      <h1 style={s.h1}>Control Center</h1>
+      <p style={{ color: "#555", marginTop: 0 }}>Safety posture and operational status. All Letterman API calls are server-side. LETTERMAN_TOKEN and PUBLISH_APPROVAL_PASSWORD never reach the browser.</p>
+      {loading && <p>Loading status…</p>}
+      {pending > 0 && (
+        <div style={s.ok}><strong>{pending} newsletter{pending !== 1 ? "s" : ""} awaiting GO / NO GO.</strong> <a href="/admin/approval">Review now →</a></div>
+      )}
+      {diag && (
+        <>
+          <h3 style={{ marginBottom: 8 }}>Safety Posture</h3>
+          <div style={{ marginBottom: 16 }}>
+            {[
+              { label: "LETTERMAN_TOKEN", ok: diag.token === "present", note: diag.token === "present" ? "Present" : "Missing — all API calls will fail" },
+              { label: "Auth gate (FACTORY_USER / FACTORY_PASS)", ok: diag.factoryUser === "configured" && diag.factoryPass === "configured", note: "Fail-closed on missing credentials" },
+              { label: "PUBLISH_APPROVAL_PASSWORD", ok: diag.approvalPassword === "configured", note: diag.approvalPassword === "configured" ? "Configured — GO is unblocked" : "Missing — GO is blocked" },
+              { label: "Raw live-send blocked", ok: diag.rawSendBlocked, note: "Enforced server-side in /api/admin/letterman" },
+              { label: "Letterman connection", ok: diag.lettermanOk, note: diag.lettermanOk ? "Read test passed" : (diag.lettermanError ?? "Failed") },
+            ].map(({ label, ok, note }) => (
+              <div key={label} style={s.row}>
+                <span style={{ minWidth: 300, fontSize: 13 }}><strong>{label}</strong></span>
+                <Badge ok={ok} />
+                <span style={{ color: "#666", fontSize: 12 }}>{note}</span>
+              </div>
+            ))}
+            <div style={s.row}>
+              <span style={{ minWidth: 300, fontSize: 13 }}><strong>ENABLE_LIVE_BROADCAST</strong></span>
+              <span style={{ padding: "1px 7px", borderRadius: 4, fontSize: 11, fontWeight: 700, background: diag.liveBroadcast ? "#fff3cd" : "#d4edda", color: diag.liveBroadcast ? "#856404" : "#155724" }}>{diag.liveBroadcast ? "ENABLED" : "LOCKED OFF"}</span>
+              <span style={{ color: "#666", fontSize: 12 }}>{diag.liveBroadcast ? "Live broadcasting active" : "Set ENABLE_LIVE_BROADCAST=true to allow real sends"}</span>
             </div>
           </div>
+          {diag.issues.length > 0 && (
+            <div style={s.warn}><strong>Configuration issues:</strong><ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{diag.issues.map((iss, i) => <li key={i}>{iss}</li>)}</ul></div>
+          )}
+        </>
+      )}
+      <h3>Admin Compartments</h3>
+      <div style={s.grid}>
+        {[
+          { href: "/admin/dashboard", label: "Dashboard", desc: "Operational overview — counts, status, blockers" },
+          { href: "/admin/diagnostics", label: "Diagnostics", desc: "Environment checks and Letterman connection test" },
+          { href: "/admin/newsletters", label: "Newsletters", desc: "List and inspect newsletters from Letterman" },
+          { href: "/admin/builder", label: "Builder", desc: "Create newsletter shells and add content sections" },
+          { href: "/admin/preview", label: "Preview", desc: "Retrieve and review newsletter content" },
+          { href: "/admin/test-send", label: "Test Send", desc: "Send test email — never live broadcast" },
+          { href: "/admin/approval", label: "Approval", desc: "GO / NO GO queue — requires password + phrase" },
+          { href: "/admin/broadcast", label: "Broadcast", desc: "Broadcast lock status — read-only" },
+          { href: "/admin/alerts", label: "Alerts", desc: "Recent alerts, failures, and blocked attempts" },
+        ].map((c) => (
+          <a key={c.href} href={c.href} style={s.card}>
+            <strong style={{ color: "#0021A5", display: "block", marginBottom: 4 }}>{c.label}</strong>
+            <span style={{ fontSize: 12, color: "#666" }}>{c.desc}</span>
+          </a>
         ))}
-      </div>
-
-      <div style={box}>
-        <h3>Raw API console</h3>
-        <select style={inp} value={rm} onChange={(e) => setRm(e.target.value)}>
-          <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option>
-        </select>
-        <input style={{ ...inp, width: 380 }} value={rp} onChange={(e) => setRp(e.target.value)} placeholder="/newsletters" />
-        <button style={btn} onClick={runRaw}>Send</button>
-        <textarea style={{ ...inp, width: "100%", height: 80, marginTop: 8, display: "block" }} value={rb} onChange={(e) => setRb(e.target.value)} placeholder='Optional JSON body, e.g. {"name":"X","type":"NEWSLETTER"}' />
-      </div>
-
-      <div style={box}>
-        <h3>Output</h3>
-        <pre style={{ background: "#111", color: "#0f0", padding: 12, borderRadius: 6, overflow: "auto", maxHeight: 360 }}>{out}</pre>
       </div>
     </main>
   );
