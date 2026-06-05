@@ -56,7 +56,6 @@ export default function TipPage() {
             <>
               <label style={label}>What&apos;s the tip? <span style={{ color: ORANGE }}>*</span></label>
               <textarea style={{ ...input, minHeight: 110, resize: "vertical" }} value={f.tip} onChange={upd("tip")} placeholder="Tell us what's happening — the more detail, the better." />
-
               <label style={label}>What&apos;s it about?</label>
               <select style={input} value={f.category} onChange={upd("category")}>
                 <option value="event">An event</option>
@@ -64,22 +63,15 @@ export default function TipPage() {
                 <option value="good_news">Good news / a shoutout</option>
                 <option value="other">Something else</option>
               </select>
-
               <label style={label}>Short headline (optional)</label>
               <input style={input} value={f.headline} onChange={upd("headline")} placeholder="e.g. New taco spot on Main Street" />
-
               <label style={label}>Town / area (optional)</label>
               <input style={input} value={f.town} onChange={upd("town")} placeholder="e.g. Leesburg, Mount Dora, The Villages" />
-
               <label style={label}>Your name (optional)</label>
               <input style={input} value={f.name} onChange={upd("name")} placeholder="So we can credit you" />
-
               <label style={label}>Email or phone (optional)</label>
               <input style={input} value={f.contact} onChange={upd("contact")} placeholder="In case we need to follow up" />
-
-              {/* honeypot */}
               <input style={hidden} tabIndex={-1} autoComplete="off" value={f.website} onChange={upd("website")} aria-hidden="true" />
-
               {err && <div style={{ color: "#c0392b", fontSize: 14, marginTop: 14 }}>{err}</div>}
               <button style={btn(busy)} onClick={submit} disabled={busy}>{busy ? "Sending…" : "Send the tip →"}</button>
               <p style={{ color: "#9aa0a8", fontSize: 12, marginTop: 14, textAlign: "center" }}>The 352 Beat · The Pulse of Lake County Life</p>

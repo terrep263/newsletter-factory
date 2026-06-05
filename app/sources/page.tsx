@@ -56,7 +56,6 @@ export default function SourcesPage() {
       <p className="kicker">Collect</p>
       <h2 className="head">Sources</h2>
       <p>RSS/Atom feeds that feed the 352 content inbox. Run the collector to pull the latest items.</p>
-
       <div className="card" style={{ marginTop: "1rem" }}>
         <h3>Add a source</h3>
         <div className="form-grid">
@@ -76,15 +75,12 @@ export default function SourcesPage() {
           <button onClick={addSource} disabled={!form.brand_id || !form.name}>Add source</button>
         </div>
       </div>
-
       {msg && <p className="meta" style={{ marginTop: ".75rem" }}>{msg}</p>}
-
       <div className="status-row" style={{ marginTop: "1rem" }}>
         {brands.map((b) => (
           <button key={b.id} className="pill-btn" onClick={() => runCollector(b.id)}>▶ Collect for {b.name}</button>
         ))}
       </div>
-
       <h3 style={{ marginTop: "1.5rem" }}>Active sources</h3>
       {loading ? <p>Loading…</p> : sources.length === 0 ? <p className="meta">No sources yet. Add one above.</p> : (
         <table className="data">

@@ -41,7 +41,6 @@ export default function IssuesPage() {
       <h2 className="head">Issues</h2>
       <p>Issues assembled from approved inbox items. Push to Letterman to generate the newsletter, then lay out and send there.</p>
       {msg && <p className="meta" style={{ marginTop: ".75rem" }}>{msg}</p>}
-
       {loading ? <p>Loading…</p> : issues.length === 0 ? (
         <p className="meta" style={{ marginTop: "1rem" }}>No issues yet. Build one from the Content Inbox.</p>
       ) : (
