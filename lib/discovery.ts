@@ -11,6 +11,7 @@ export interface DiscoveredItem {
   link: string;
   source: string;
   pubDate: string;
+  description: string;
 }
 
 const UA = "Mozilla/5.0 (compatible; NewsletterFactory/1.0; +https://thenewsletterfactory.com)";
@@ -26,8 +27,8 @@ function buildQuery(pub: Publication, pillar: Pillar): string {
   return `Florida (${geo}) (${terms})`;
 }
 
-function parseRss(xml: string): Array<{ title: string; link: string; source: string; pubDate: string }> {
-  const out: Array<{ title: string; link: string; source: string; pubDate: string }> = [];
+function parseRss(xml: string): Array<{ title: string; link: string; source: string; pubDate: string; description: string }> {
+  const out: Array<{ title: string; link: string; source: string; pubDate: string; description: string }> = [];
   const re = /<item>([\s\S]*?)<\/item>/g;
   let m: RegExpExecArray | null;
   const pick = (block: string, tag: string): string => {
@@ -36,7 +37,7 @@ function parseRss(xml: string): Array<{ title: string; link: string; source: str
   };
   while ((m = re.exec(xml))) {
     const b = m[1];
-    out.push({ title: pick(b, "title"), link: pick(b, "link"), source: pick(b, "source"), pubDate: pick(b, "pubDate") });
+    out.push({ title: pick(b, "title"), link: pick(b, "link"), source: pick(b, "source"), pubDate: pick(b, "pubDate"), description: pick(b, "description").slice(0, 500) });
   }
   return out;
 }
@@ -70,7 +71,7 @@ async function fetchPillar(pub: Publication, pillar: Pillar, seen: Set<string>):
     if (seen.has(dedupe)) continue;
     if (!fits(pub, pillar, it.title, it.source)) continue;
     seen.add(dedupe);
-    kept.push({ pillar: pillar.key, pillarLabel: pillar.label, title: it.title, link: it.link, source: it.source, pubDate: it.pubDate });
+    kept.push({ pillar: pillar.key, pillarLabel: pillar.label, title: it.title, link: it.link, source: it.source, pubDate: it.pubDate, description: it.description });
     if (kept.length >= pillar.max) break;
   }
   return kept;
