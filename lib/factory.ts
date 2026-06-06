@@ -1,7 +1,7 @@
-// Orchestration: run discovery for a publication, then assemble a Letterman draft.
-// Content is built ONLY from retrieved facts (headline, source, link) — nothing invented.
-// Reference links are attached so Letterman's own generation can expand the draft,
-// grounded in those same sources, when the operator chooses. SERVER ONLY.
+// Orchestration: run discovery for a publication, then assemble a populated Letterman draft.
+// Content is built ONLY from retrieved facts (headline, source, link) - nothing invented.
+// Each pillar -> a TITLE block + a TEXT block whose body (promptOutPut) lists the real,
+// linked, local stories. SERVER ONLY.
 
 import lm from "@/lib/letterman";
 import { upsertApproval } from "@/lib/approval";
@@ -36,12 +36,11 @@ export async function buildDraft(publicationId: string): Promise<BuildResult> {
 
   const notes: string[] = [];
   const result = await discover(pub);
-
   if (result.total === 0) {
     return { ok: false, publication: pub.name, totalStories: 0, sections: [], referenceLinksAttached: 0, notes, error: "No qualifying local stories found this run." };
   }
 
-  const name = `${pub.lettermanName} — ${issueLabel()}`;
+  const name = `${pub.lettermanName} - ${issueLabel()}`;
   let newsletterId = "";
   try {
     const nl = (await lm.newsletters.create({ name })) as Record<string, unknown>;
@@ -56,24 +55,24 @@ export async function buildDraft(publicationId: string): Promise<BuildResult> {
     const items = result.byPillar[pillar.key] ?? [];
     if (!items.length) continue;
     try {
-      await lm.newsletters.addSection(newsletterId, { type: "text", title: pillar.label, content: sectionBody(items) });
+      await lm.newsletters.addSection(newsletterId, { type: "TITLE", title: pillar.label, showTitle: true });
+      await lm.newsletters.addSection(newsletterId, { type: "TEXT", promptOutPut: sectionBody(items) });
       sections.push({ pillar: pillar.key, label: pillar.label, count: items.length });
     } catch (e) {
       notes.push(`Section "${pillar.label}" failed: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
+  // Reference links are best-effort (Letterman validation is strict); the grounded
+  // TEXT sections above are the guaranteed content, so a failure here is non-fatal.
   let refCount = 0;
-  try {
-    const urls = result.all.map((i) => i.link).filter(Boolean);
-    if (urls.length) {
-      await lm.newsletters.addReferenceLinks(newsletterId, { urls });
-      refCount = urls.length;
-      notes.push("Reference links attached — run Letterman generation from the draft to expand, grounded in these sources.");
-    }
-  } catch (e) {
-    notes.push(`Reference-link attach skipped: ${e instanceof Error ? e.message : String(e)}`);
+  for (const it of result.all) {
+    try {
+      await lm.newsletters.addReferenceLinks(newsletterId, { url: it.link });
+      refCount++;
+    } catch { /* ignore - sections already carry the sourced content */ }
   }
+  if (refCount) notes.push(`${refCount} reference links attached for optional Letterman expansion.`);
 
   try {
     upsertApproval(newsletterId, { newsletterTitle: name });
