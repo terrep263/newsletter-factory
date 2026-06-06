@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 const NAV: { href: string; label: string }[] = [
   { href: "/admin", label: "Control Center" },
+  { href: "/admin/factory", label: "Factory" },
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/diagnostics", label: "Diagnostics" },
   { href: "/admin/newsletters", label: "Newsletters" },
