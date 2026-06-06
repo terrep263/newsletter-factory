@@ -40,16 +40,16 @@ export default function FactoryPage() {
     <main>
       <h2 style={{ color: "#0021A5", marginTop: 0 }}>Factory</h2>
       <p style={{ color: "#555", marginTop: 0 }}>Run a publication&apos;s discovery, then Letterman writes each local story (grounded in the source, no invented facts) into a draft filed under the publication. Review and approve under <a href="/admin/approval">Approval</a>.</p>
-      {pubs.length === 0 && <p>Loading publications\u2026</p>}
+      {pubs.length === 0 && <p>Loading publications...</p>}
       {pubs.map((p) => (
         <div key={p.id} style={card}>
           <h3 style={{ margin: "0 0 4px" }}>{p.name}</h3>
-          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#777" }}>Draft day {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][p.draftDay]} \u00b7 sends {p.sendDay} \u00b7 {p.pillars.length} pillars</p>
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#777" }}>Draft day {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][p.draftDay]} - sends {p.sendDay} - {p.pillars.length} pillars</p>
           <button style={{ ...btn, background: "#eee", color: "#222" }} onClick={() => runPreview(p.id)} disabled={busy.startsWith(p.id)}>
-            {busy === p.id + ":preview" ? "Scanning\u2026" : "Preview discovery"}
+            {busy === p.id + ":preview" ? "Scanning..." : "Preview discovery"}
           </button>
           <button style={{ ...btn, background: "#0021A5", color: "#fff" }} onClick={() => runBuild(p.id)} disabled={busy.startsWith(p.id)}>
-            {busy === p.id + ":build" ? "Building draft\u2026" : "Build this week's draft"}
+            {busy === p.id + ":build" ? "Building draft..." : "Build this week's draft"}
           </button>
 
           {preview[p.id] && (
@@ -59,7 +59,7 @@ export default function FactoryPage() {
                 <div key={k} style={{ marginTop: 8 }}>
                   <div style={{ fontWeight: 600 }}>{k} ({items.length})</div>
                   {items.map((it, i) => (
-                    <div key={i} style={{ color: "#444", marginLeft: 10 }}>\u2022 {it.title} <span style={{ color: "#999" }}>{it.source}</span></div>
+                    <div key={i} style={{ color: "#444", marginLeft: 10 }}>- {it.title} <span style={{ color: "#999" }}>{it.source}</span></div>
                   ))}
                 </div>
               ))}
@@ -71,9 +71,9 @@ export default function FactoryPage() {
               {result[p.id].ok ? (
                 <>
                   <strong>Draft created:</strong> {result[p.id].newsletterName}<br />
-                  {result[p.id].totalStories} stories \u00b7 {result[p.id].written} written by Letterman \u00b7 {result[p.id].sections.length} sections<br />
+                  {result[p.id].totalStories} stories - {result[p.id].written} written by Letterman - {result[p.id].sections.length} sections<br />
                   <span style={{ fontSize: 12 }}>Newsletter ID: <code>{result[p.id].newsletterId}</code></span><br />
-                  <a href={`/admin/approval?id=${result[p.id].newsletterId}`} style={{ color: "#155724", fontWeight: 600 }}>Review &amp; approve \u2192</a>
+                  <a href={`/admin/approval?id=${result[p.id].newsletterId}`} style={{ color: "#155724", fontWeight: 600 }}>Review &amp; approve -&gt;</a>
                   {result[p.id].notes.length > 0 && <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12 }}>{result[p.id].notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
                 </>
               ) : (
