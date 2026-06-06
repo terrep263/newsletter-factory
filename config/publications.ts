@@ -15,6 +15,7 @@ export interface Publication {
   name: string;
   lettermanName: string;
   brandId?: string;
+  lettermanStorageId?: string;
   draftDay: number;
   sendDayLabel: string;
   flUnique: string[];
@@ -32,6 +33,7 @@ export const PUBLICATIONS: Publication[] = [
     name: "The 352 Beat",
     lettermanName: "The 352 Beat",
     brandId: "c72c2449-2949-40f7-8b8f-1a1848190b38",
+    lettermanStorageId: "68d472e39810d7125b8f31f5",
     draftDay: 3,
     sendDayLabel: "Thursday/Friday",
     flUnique: [

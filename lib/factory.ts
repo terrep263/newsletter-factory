@@ -50,6 +50,18 @@ export async function buildDraft(publicationId: string): Promise<BuildResult> {
     return { ok: false, publication: pub.name, totalStories: result.total, sections: [], referenceLinksAttached: 0, notes, error: `Letterman create failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 
+  // File the draft under the publication's Letterman storage so it appears in the
+  // letterman.ai dashboard (passing storageId at create time fails Letterman validation,
+  // so it must be attached immediately after).
+  if (pub.lettermanStorageId) {
+    try {
+      await lm.newsletters.update(newsletterId, { storageId: pub.lettermanStorageId });
+      notes.push(`Filed under the ${pub.name} publication.`);
+    } catch (e) {
+      notes.push(`Could not attach to publication storage: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   const sections: BuildResult["sections"] = [];
   for (const pillar of pub.pillars) {
     const items = result.byPillar[pillar.key] ?? [];
