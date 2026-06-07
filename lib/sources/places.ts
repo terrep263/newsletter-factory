@@ -2,8 +2,6 @@
  * Google Places business source — The 352 Beat.
  * Pulls independent-leaning, well-reviewed local businesses per town/category
  * via the Places API v1 (searchText). Server-side only (holds the API key).
- * Photos are stored as a Places photo `name`; resolved + re-hosted at assembly
- * time so the API key is never exposed in a public image URL.
  */
 import type { NormalizedItem } from "@/lib/collector";
 
@@ -23,21 +21,33 @@ export const DEFAULT_CATEGORIES = [
   "boutique or local shop","barber shop or salon","ice cream or dessert shop","local attraction",
 ];
 
-// Obvious national/regional chains to exclude (we want locally owned).
-const CHAINS = [
+// National/regional chains to exclude (we feature locally owned). Lowercase substrings.
+export const CHAINS = [
+  // fast food / qsr
   "starbucks","mcdonald","burger king","wendy","subway","taco bell","kfc","popeyes",
-  "chick-fil-a","chick fil a","dunkin","wawa","walmart","target","publix","winn-dixie",
-  "cvs","walgreens","domino","pizza hut","papa john","chipotle","panera","dollar general",
-  "dollar tree","family dollar","7-eleven","circle k","applebee","chili's","olive garden",
-  "ihop","denny","waffle house","culver","sonic","arby","little caesars","marco's pizza",
-  "firehouse subs","jersey mike","tropical smoothie","five guys","zaxby","wingstop","crumbl",
-  "baskin","cold stone","tijuana flats","moe's","jimmy john","dairy queen","hardee","checkers",
-  "outback","texas roadhouse","longhorn","cracker barrel","panda express","ruby tuesday",
-  "first watch","bob evans","perkins","dollar","aldi","sam's club","costco","home depot","lowe's",
+  "chick-fil-a","chick fil a","dunkin","wawa","domino","pizza hut","papa john","chipotle",
+  "panera","7-eleven","circle k","little caesars","firehouse subs","jersey mike","five guys",
+  "zaxby","wingstop","jimmy john","dairy queen","hardee","checkers","sonic","arby","culver",
+  "panda express","moe's","tijuana flats","pollo tropical","pdq","smoothie king","tropical smoothie",
+  "einstein","steak n shake","steak 'n shake","whataburger","raising cane","del taco","el pollo",
+  // casual dining chains
+  "applebee","chili's","olive garden","ihop","denny","waffle house","outback","texas roadhouse",
+  "longhorn","cracker barrel","ruby tuesday","first watch","bob evans","perkins","red lobster",
+  "harry's","mission bbq","sonny's","bono's","beef 'o","beef o'","miller's ale","world of beer",
+  "bahama breeze","carrabba","bonefish","twin peaks","hooters","buffalo wild","ford's garage",
+  "mellow mushroom","keke","metro diner","another broken egg","glory days","tgi friday","on the border",
+  // coffee/dessert chains
+  "7 brew","foxtail","ellianos","scooter","biggby","pj's coffee","the human bean","crumbl",
+  "baskin","cold stone","tcby","menchie","marble slab","jeremiah's","kona ice","nothing bundt",
+  // retail / services / grocery
+  "walmart","target","publix","winn-dixie","aldi","sam's club","costco","home depot","lowe's",
+  "cvs","walgreens","dollar general","dollar tree","family dollar","great clips","sport clips",
+  "supercuts","european wax","massage envy","planet fitness","anytime fitness","orangetheory",
+  "crunch fitness","ups store","batteries plus","ace hardware","tractor supply","five below",
 ];
 
-function isChain(name: string): boolean {
-  const n = name.toLowerCase();
+export function isChain(name: string): boolean {
+  const n = (name || "").toLowerCase();
   return CHAINS.some((c) => n.includes(c));
 }
 

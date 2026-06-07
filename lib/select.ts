@@ -4,10 +4,11 @@
  *  - equal-weight round-robin across town zones (no town dominates)
  *  - per-zone caps + distinct zones across Top Story / Spotlight / Radar
  *  - lead rotation (Spotlight avoids recently featured zones)
- *  - administrative calendar items filtered out of Things To Do
- *  - events: upcoming only, soonest first
+ *  - chains filtered out (defense-in-depth, also enforced at collection)
+ *  - events: upcoming only, ranked by community interest, admin items dropped
  */
 import { db } from "@/lib/supabase";
+import { isChain } from "@/lib/sources/places";
 
 export interface SelItem {
   id: string;
@@ -33,8 +34,10 @@ export interface IssuePlan {
 
 // Civic/administrative items that are not "things to do".
 const ADMIN = /\b(city council|council meeting|commission meeting|board meeting|board of|workshop|agenda|budget|public hearing|hearing|election|candidate|qualifying|cra meeting|advisory|planning (and|&) zoning|p&z|special magistrate|canvassing|swearing|proclamation|closed session|executive session|committee)\b/i;
-// Marquee, high-interest public happenings preferred for the Top Story lead.
-const MARQUEE = /\b(festival|market|concert|fair|music|live|celebration|parade|art walk|food truck|farmers|holiday|fireworks|craft|expo|show|movie|family)\b/i;
+// Marquee, high-interest public happenings.
+const MARQUEE = /\b(festival|market|concert|fair|music|live music|celebration|parade|art walk|food truck|farmers|holiday|fireworks|craft|expo|wine|brew|tasting|gala|night out|movie night|family fun)\b/i;
+// Low-interest routine programs (kept only as fallback).
+const ROUTINE = /\b(support group|story ?time|sensory|book club|knit|crochet|needle|yoga|pickleball|board game|bingo|line danc|mahjong|canasta|bridge club|toastmasters|aa meeting|al-anon|blood drive|tech help|computer class|story hour|playgroup|drop-in|office hours)\b/i;
 
 function isThingToDo(it: SelItem): boolean {
   return !ADMIN.test(`${it.title} ${it.location ?? ""}`);
@@ -44,8 +47,13 @@ function bizScore(it: SelItem): number {
   const n = Number(it.raw?.reviews ?? 0);
   return r + Math.log10(n + 1);
 }
+function eventInterest(it: SelItem): number {
+  let s = 0;
+  if (MARQUEE.test(it.title)) s += 5;
+  if (ROUTINE.test(it.title)) s -= 4;
+  return s;
+}
 
-/** Round-robin across zones: <= perZone per zone, total <= limit; non-excluded zones first, excluded as fallback. */
 function roundRobinByZone(items: SelItem[], limit: number, perZone: number, exclude: Set<string>): SelItem[] {
   const byZone = new Map<string, SelItem[]>();
   for (const it of items) {
@@ -85,34 +93,38 @@ export async function buildIssuePlan(brandId: string): Promise<IssuePlan> {
 
   const { data: bizData } = await db.from("content_items").select("*")
     .eq("brand_id", brandId).eq("item_type", "business").eq("status", "new");
-  const businesses = ((bizData ?? []) as SelItem[]).sort((a, b) => bizScore(b) - bizScore(a));
+  const businesses = ((bizData ?? []) as SelItem[])
+    .filter((b) => !isChain(b.title))
+    .sort((a, b) => bizScore(b) - bizScore(a));
 
   const { data: evData } = await db.from("content_items").select("*")
     .eq("brand_id", brandId).eq("item_type", "event").eq("status", "new")
-    .gte("event_date", today).order("event_date", { ascending: true });
-  const events = ((evData ?? []) as SelItem[]).filter(isThingToDo);
+    .gte("event_date", today);
+  const events = ((evData ?? []) as SelItem[])
+    .filter(isThingToDo)
+    .sort((a, b) => {
+      const di = eventInterest(b) - eventInterest(a);
+      if (di !== 0) return di;
+      return (a.event_date ?? "").localeCompare(b.event_date ?? "");
+    });
 
-  // Spotlight: top-scored business from a zone not recently featured (rotation).
   const spotPool = businesses.filter((b) => !recentLeadZones.has(b.zone ?? ""));
   const spotlight = spotPool[0] ?? businesses[0] ?? null;
   const spotZone = spotlight?.zone ?? "";
 
-  // Top Story: marquee event from another town if available; else a notable business discovery.
   const marquee = events.filter((e) => e.zone !== spotZone && MARQUEE.test(e.title));
   const topBiz = businesses.filter((b) => b.id !== spotlight?.id && b.zone !== spotZone);
-  const topEventAny = events.filter((e) => e.zone !== spotZone);
-  const topStory = marquee[0] ?? topBiz[0] ?? topEventAny[0] ?? null;
+  const topEventAny = events.filter((e) => e.zone !== spotZone && !ROUTINE.test(e.title));
+  const topStory = marquee[0] ?? topEventAny[0] ?? topBiz[0] ?? null;
   const topStoryKind: "event" | "business" | null =
     topStory ? (topStory.item_type === "event" ? "event" : "business") : null;
   const topZone = topStory?.zone ?? "";
 
-  // On Our Radar: 3 businesses, distinct towns, excluding spotlight & top-story towns.
   const radar = roundRobinByZone(
     businesses.filter((b) => b.id !== spotlight?.id && b.id !== topStory?.id),
     3, 1, new Set([spotZone, topZone].filter(Boolean))
   );
 
-  // Things To Do: 4 events, distinct towns (max 2 per town).
   const thingsToDo = roundRobinByZone(
     events.filter((e) => e.id !== topStory?.id),
     4, 2, new Set()
