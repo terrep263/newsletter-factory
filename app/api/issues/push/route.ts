@@ -5,11 +5,9 @@ import lm from "@/lib/letterman";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Hyperlocal geography guardrail — keeps Letterman's AI on Central Florida.
-const GEO =
-  "Lake County, Florida and the surrounding 352 area (Leesburg, Mount Dora, Eustis, " +
-  "Tavares, Lady Lake, The Villages, Clermont, and Ocala). This is CENTRAL FLORIDA — " +
-  "never California or any other Lake County in another state.";
+// Hyperlocal identity. NOTE: town names are context for voice only and must NOT
+// be injected into article text — the prompt forbids adding any place not in the source.
+const GEO = "Central Florida's 352 area (Lake, Marion, Sumter and neighboring counties)";
 
 const STYLE = { width: "600", borderRadius: "5", marginBottom: "10" };
 
@@ -23,18 +21,16 @@ type Item = {
 };
 
 function writePrompt(it: Item): string {
-  const kind =
-    it.item_type === "event" ? "short events blurb"
-    : it.item_type === "permit" ? "short local development/permit note"
-    : "short local news brief";
   return [
-    `You are a writer for The 352 Beat, a hyperlocal weekly newsletter covering ${GEO}`,
-    `Rewrite the source below into a warm, factual ${kind} of 2-4 sentences for local readers.`,
-    `Do not invent facts, names, dates, places, or quotes. Stay specific to ${GEO}.`,
-    `If the source is clearly not about this Central Florida area, summarize only what is given and add no locale.`,
-    ``,
+    `You are an editor for The 352 Beat, a hyperlocal weekly newsletter for ${GEO}.`,
+    `Rewrite the SOURCE into a brief, warm 1-3 sentence newsletter blurb.`,
+    `STRICT RULES:`,
+    `- Use ONLY facts stated in the source. Do NOT add place names, people, numbers, dates, organizations, or details that are not in the source.`,
+    `- Do NOT mention any town or county unless it literally appears in the source.`,
+    `- If the source is only a headline with no detail, write ONE neutral sentence based solely on that headline.`,
+    `- Never mention California or any Lake County outside Florida.`,
     `SOURCE TITLE: ${it.title}`,
-    `SOURCE SUMMARY: ${it.body ? it.body : "(none)"}`,
+    `SOURCE SUMMARY: ${it.body ? it.body : "(headline only)"}`,
   ].join("\n");
 }
 
@@ -49,17 +45,13 @@ async function aiWrite(it: Item): Promise<string> {
   }
 }
 
-// Builds the section image fields: real source image first, AI-generated fallback.
+// Image fields for a section. Real source image only; if none, no image block
+// (AI image generation is not yet verified — better no image than an empty block).
 function imageFields(it: Item): Record<string, unknown> {
   if (it.image_url) {
     return { includeImage: true, imageUrl: it.image_url, imageBelowTitle: true };
   }
-  return {
-    includeImage: true,
-    generateImage: true,
-    imagePrompt: `A realistic photo representing: ${it.title} — in ${GEO}`,
-    imageBelowTitle: true,
-  };
+  return { includeImage: false };
 }
 
 async function buildSection(
