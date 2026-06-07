@@ -1,10 +1,12 @@
 /**
  * The 352 Collector — Newsletter Factory
  * Pulls items from a brand's content_sources into content_items.
- * Supports RSS/Atom event/story feeds and the Google Places business source.
+ * Source types: rss/atom (story/event feeds), ical (CivicPlus calendars),
+ * places (Google Places business source).
  */
 import { db } from "@/lib/supabase";
 import { fetchPlacesBusinesses, DEFAULT_TOWNS, DEFAULT_CATEGORIES } from "@/lib/sources/places";
+import { fetchIcalEvents } from "@/lib/sources/ical";
 import crypto from "crypto";
 
 export interface NormalizedItem {
@@ -75,7 +77,6 @@ function toISODate(d?: string | null): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
-// Crime / accident / fear-based content has no place in the newsletter (Editorial Foundation).
 const EXCLUDE = /\b(crash|accident|arrest(ed|s)?|shooting|shot|stabb|homicide|murder|killed|dead|death|fatal|robbery|burglar|assault|dui|overdose|standoff|manhunt|fire kills|body found|suspect|police investigate|deputies|sheriff'?s office)\b/i;
 export function isExcludedNews(title: string, body?: string | null): boolean {
   return EXCLUDE.test(`${title} ${body ?? ""}`);
@@ -128,6 +129,14 @@ export async function collectSource(source: {
         minRating: (cfg.minRating as number) ?? 4.5,
         minReviews: (cfg.minReviews as number) ?? 50,
       });
+    } else if (source.source_type === "ical") {
+      items = await fetchIcalEvents({
+        domain: cfg.domain as string,
+        catIDs: (cfg.catIDs as number[]) || [],
+        zone: zone || "",
+        weeksAhead: cfg.weeksAhead as number | undefined,
+        cap: cfg.cap as number | undefined,
+      });
     } else if (source.source_type === "rss" || source.source_type === "atom") {
       if (!source.url) throw new Error("Source has no URL");
       items = await fetchRss(source.url, defaultType, zone);
@@ -139,7 +148,10 @@ export async function collectSource(source: {
     for (const it of items) {
       if (filterNews && isExcludedNews(it.title, it.body)) { result.skipped++; continue; }
       const pid = it.raw?.place_id ? String(it.raw.place_id) : "";
-      const dedupe_hash = pid ? hash(source.brand_id, pid, "") : hash(source.brand_id, it.title, it.url);
+      let dedupe_hash: string;
+      if (pid) dedupe_hash = hash(source.brand_id, pid, "");
+      else dedupe_hash = hash(source.brand_id, it.title, `${it.url ?? ""}${it.event_date ? "|" + it.event_date : ""}`);
+
       const existing = await db.from("content_items").select("id", { head: true, count: "exact" }).eq("dedupe_hash", dedupe_hash);
       if ((existing.count ?? 0) > 0) { result.skipped++; continue; }
 
