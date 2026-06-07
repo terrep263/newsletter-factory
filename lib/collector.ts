@@ -11,6 +11,7 @@ export interface NormalizedItem {
   title: string;
   body?: string | null;
   url?: string | null;
+  image_url?: string | null;
   event_date?: string | null;
   location?: string | null;
   raw?: Record<string, unknown>;
@@ -54,6 +55,24 @@ function pickAttr(block: string, tag: string, attr: string): string | null {
   return m ? m[1].trim() : null;
 }
 
+/**
+ * Extract a representative image URL from an RSS/Atom item block.
+ * Order: media:content/thumbnail -> image enclosure -> first <img> in content.
+ * Returns null when the feed carries no image (e.g. Google News, text-only feeds);
+ * assembly falls back to AI image generation in that case.
+ */
+function pickImage(block: string): string | null {
+  let m = block.match(/<media:(?:content|thumbnail)[^>]*\burl=["']([^"']+)["']/i);
+  if (m) return m[1].trim();
+  m = block.match(/<enclosure[^>]*\burl=["']([^"']+)["'][^>]*\btype=["']image\//i);
+  if (m) return m[1].trim();
+  m = block.match(/<enclosure[^>]*\btype=["']image\/[^>]*\burl=["']([^"']+)["']/i);
+  if (m) return m[1].trim();
+  m = block.match(/<img[^>]*\bsrc=["']([^"']+)["']/i);
+  if (m) return m[1].trim();
+  return null;
+}
+
 function toISODate(d?: string | null): string | null {
   if (!d) return null;
   const parsed = new Date(d);
@@ -81,6 +100,7 @@ async function fetchRss(url: string, defaultType: string): Promise<NormalizedIte
       title,
       body: body ? body.slice(0, 1200) : null,
       url: link,
+      image_url: pickImage(b),
       event_date: defaultType === "event" ? date : null,
       raw: { pubDate: date },
     };
@@ -124,6 +144,7 @@ export async function collectSource(source: {
         title: it.title,
         body: it.body ?? null,
         url: it.url ?? null,
+        image_url: it.image_url ?? null,
         event_date: it.event_date ?? null,
         location: it.location ?? null,
         raw: it.raw ?? {},
