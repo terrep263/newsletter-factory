@@ -81,6 +81,8 @@ export const newsletters = {
 
   addSection: (newsletterId: string, section: Json) =>
     call<Json>("POST", `/newsletters/${newsletterId}/sections`, section),
+  updateSection: (newsletterId: string, sectionId: string, section: Json) =>
+    call<Json>("PUT", `/newsletters/${newsletterId}/sections/${sectionId}`, section),
   removeSection: (newsletterId: string, sectionId: string) =>
     call("DELETE", `/newsletters/${newsletterId}/sections/${sectionId}`),
 
