@@ -50,7 +50,7 @@ async function buildWeekly(brandId: string, brandName: string) {
 
   const title = `The 352 Beat — ${new Date().toISOString().slice(0, 10)}`;
   const { data: issue, error: ce } = await db
-    .from("issues").insert({ brand_id: brandId, title, status: "curating" }).select("id").single();
+    .from("issues").insert({ brand_id: brandId, title, status: "draft" }).select("id").single();
   if (ce || !issue) return { brand: brandName, assembled: false, reason: ce?.message ?? "issue insert failed" };
 
   const rows = chosen.map((c: { id: string }, i: number) => ({ issue_id: issue.id, content_item_id: c.id, position: i }));
