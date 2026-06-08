@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   "/api/auth/logout",
   "/api/cron",
   "/api/build",
+  "/api/build-newsletterly",
   "/api/top-story",
   "/api/tips",
 ];
