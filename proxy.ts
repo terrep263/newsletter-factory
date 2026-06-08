@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   "/api/cron",
   "/api/build",
   "/api/build-newsletterly",
+  "/api/send-newsletterly",
   "/api/top-story",
   "/api/tips",
 ];
