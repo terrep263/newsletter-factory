@@ -165,7 +165,7 @@ export async function buildAndPublishIssue(brandId: string, issueTitle = "The 35
   let thingsHtml = "<p>A few local ways to get out \u2014 tap any event for details:</p>";
   for (const t of plan.thingsToDo) {
     const when = [t.event_date, (raw(t).eventTime as string) || "", t.location || ""].filter(Boolean).join(" \u00b7 ");
-    thingsHtml += `<p>\U0001F4CD <strong>${esc(t.title)}</strong> \u2014 ${esc(t.zone)}<br><span style="font-size:13px;color:#666;">${esc(when)}</span><br><a href="${esc(t.url ?? "")}">Event details \u2192</a></p>`;
+    thingsHtml += `<p>\uD83D\uDCCD <strong>${esc(t.title)}</strong> \u2014 ${esc(t.zone)}<br><span style="font-size:13px;color:#666;">${esc(when)}</span><br><a href="${esc(t.url ?? "")}">Event details \u2192</a></p>`;
   }
   thingsHtml += "<p>Hosting something? <strong>Reply and tell us</strong> \u2014 we'll help spread the word.</p>";
 
