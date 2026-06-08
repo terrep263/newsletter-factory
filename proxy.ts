@@ -15,6 +15,7 @@ const PUBLIC_PATHS = [
   "/api/build",
   "/api/build-newsletterly",
   "/api/send-newsletterly",
+  "/api/import-subscribers",
   "/api/top-story",
   "/api/tips",
 ];
