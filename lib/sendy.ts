@@ -46,6 +46,18 @@ export interface CampaignInput {
 
 export interface CampaignResult { ok: boolean; status: number; body: string; }
 
+// Sendy requires an unsubscribe link in every campaign. Ensure one is present
+// (the <unsubscribe>..</unsubscribe> tag is replaced by Sendy with the unsub URL).
+const UNSUB_BLOCK =
+  '<div style="text-align:center;font-size:12px;color:#8e9bd6;padding:16px 0;font-family:Arial,Helvetica,sans-serif;">' +
+  'You can <unsubscribe>unsubscribe</unsubscribe> at any time.</div>';
+
+function ensureUnsubscribe(html: string): string {
+  if (/<unsubscribe[\s>]/i.test(html)) return html;
+  if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, `${UNSUB_BLOCK}</body>`);
+  return html + UNSUB_BLOCK;
+}
+
 /** Create (and optionally send/schedule) a campaign via Sendy's create.php. */
 export async function createCampaign(c: CampaignInput): Promise<CampaignResult> {
   const form = new URLSearchParams();
@@ -55,9 +67,9 @@ export async function createCampaign(c: CampaignInput): Promise<CampaignResult> 
   form.set("reply_to", c.replyTo || c.fromEmail);
   form.set("title", c.title);
   form.set("subject", c.subject);
-  form.set("html_text", c.html);
+  form.set("html_text", ensureUnsubscribe(c.html));   // Sendy requires an unsubscribe link
   if (c.plainText) form.set("plain_text", c.plainText);
-  if (c.brandId) form.set("brand_id", c.brandId);   // Sendy requires brand_id on every create
+  if (c.brandId) form.set("brand_id", c.brandId);     // Sendy requires brand_id on every create
   if (c.listIds) form.set("list_ids", c.listIds);
   form.set("track_opens", "1");
   form.set("track_clicks", "1");
