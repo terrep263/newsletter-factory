@@ -19,10 +19,10 @@ function authorized(req: NextRequest): boolean {
 
 /**
  * The app renders the branded HTML issue and creates it as a CAMPAIGN in Sendy
- * via Sendy's create.php. The app does the work; this endpoint is the trigger.
+ * via Sendy's create.php (which requires brand_id). The app does the work; this
+ * endpoint is the trigger.
  *  - ?dry=1   render only, no Sendy call (verifiable without Sendy creds)
- *  - default  create a DRAFT campaign in Sendy (send_campaign=0).
- *             Targeted to SENDY_LIST_ID when set, else assigned to SENDY_BRAND_ID.
+ *  - default  create a DRAFT campaign in Sendy (send_campaign=0), targeted to SENDY_LIST_ID
  *  - ?send=1  live send to SENDY_LIST_ID (needs verified domain) — explicit only
  * Guarded by CRON_SECRET.
  */
@@ -53,12 +53,12 @@ export async function GET(req: NextRequest) {
     const replyTo = process.env.SENDY_REPLY_TO || fromEmail;
     const subject = p.get("subject") || r.title;
 
+    if (!brandId) return NextResponse.json({ ok: false, error: "SENDY_BRAND_ID not set (Sendy requires brand_id)" }, { status: 400 });
     if (send && !listIds) return NextResponse.json({ ok: false, error: "send requires SENDY_LIST_ID" }, { status: 400 });
-    if (!send && !listIds && !brandId) return NextResponse.json({ ok: false, error: "draft requires SENDY_LIST_ID or SENDY_BRAND_ID" }, { status: 400 });
 
     const created = await createCampaign({
       title: r.title, subject, html: r.html, fromName, fromEmail, replyTo,
-      brandId: listIds ? undefined : brandId,
+      brandId,
       listIds: listIds || undefined,
       send,
     });

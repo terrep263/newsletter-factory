@@ -36,7 +36,7 @@ export interface CampaignInput {
   fromName: string;
   fromEmail: string;
   replyTo?: string;
-  brandId?: string;          // required for a draft when no listIds
+  brandId?: string;          // REQUIRED by Sendy create.php for every campaign
   listIds?: string;          // comma-separated; required to actually send
   send?: boolean;            // true => send_campaign=1 (live send)
   plainText?: string;
@@ -57,8 +57,8 @@ export async function createCampaign(c: CampaignInput): Promise<CampaignResult> 
   form.set("subject", c.subject);
   form.set("html_text", c.html);
   if (c.plainText) form.set("plain_text", c.plainText);
+  if (c.brandId) form.set("brand_id", c.brandId);   // Sendy requires brand_id on every create
   if (c.listIds) form.set("list_ids", c.listIds);
-  if (c.brandId && !c.listIds) form.set("brand_id", c.brandId);
   form.set("track_opens", "1");
   form.set("track_clicks", "1");
   form.set("send_campaign", c.send ? "1" : "0");
