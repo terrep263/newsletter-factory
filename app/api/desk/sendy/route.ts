@@ -10,6 +10,7 @@ const BRAND_352 = "c72c2449-2949-40f7-8b8f-1a1848190b38";
 
 // Founder control surfaced on /desk (Basic Auth gated by the proxy).
 // Renders the current issue and creates a DRAFT campaign in Sendy via create.php.
+// Targeted to SENDY_LIST_ID when set, else assigned to SENDY_BRAND_ID.
 // mode "dry" renders only (no Sendy call). This route never sends a live campaign.
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -28,7 +29,8 @@ export async function POST(req: NextRequest) {
     const cfg = sendyConfig();
     if (!cfg.hasApiKey) return NextResponse.json({ ok: false, error: "SENDY_API_KEY not set on newsletter-factory" }, { status: 400 });
     const brandId = process.env.SENDY_BRAND_ID || "";
-    if (!brandId) return NextResponse.json({ ok: false, error: "SENDY_BRAND_ID not set (required to create a draft)" }, { status: 400 });
+    const listIds = process.env.SENDY_LIST_ID || "";
+    if (!listIds && !brandId) return NextResponse.json({ ok: false, error: "Set SENDY_LIST_ID (or SENDY_BRAND_ID) to create a draft" }, { status: 400 });
 
     const fromEmail = process.env.SENDY_FROM_EMAIL || "hello@the352beat.com";
     const created = await createCampaign({
@@ -38,7 +40,8 @@ export async function POST(req: NextRequest) {
       fromName: process.env.SENDY_FROM_NAME || "The 352 Beat",
       fromEmail,
       replyTo: process.env.SENDY_REPLY_TO || fromEmail,
-      brandId,
+      brandId: listIds ? undefined : brandId,
+      listIds: listIds || undefined,
       send: false,
     });
 
