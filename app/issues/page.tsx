@@ -25,7 +25,7 @@ export default function IssuesPage() {
       <p className="kicker">Publish</p>
       <h2 className="head">Issues</h2>
       <p>Issues assembled from approved inbox items. Push the current issue to Sendy as a draft from <a href="/desk">The Desk</a>, then review and send from the Sendy dashboard.</p>
-      {loading ? <p>Loading\u2026</p> : issues.length === 0 ? (
+      {loading ? <p>Loading…</p> : issues.length === 0 ? (
         <p className="meta" style={{ marginTop: "1rem" }}>No issues yet. Build one from the Content Inbox.</p>
       ) : (
         <table className="data" style={{ marginTop: "1rem" }}>
